@@ -1,0 +1,3 @@
+all: 
+	g++ code\main.cpp -o build\main -Llib -lsfml-graphics -lsfml-window -lsfml-system
+	.\build\main.exe

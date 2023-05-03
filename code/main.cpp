@@ -6,43 +6,46 @@ int main()
 {
     // CONSTANTS
     const int W = 1920, H = 1080; // window resolution
-    const int MAX_DEPTH = 16; // max ray reflection count
-    const int MAX_DISTANCE = 100000; // render distance
-    const int SAMPLE_COUNT = 8; // sample per frame count
+    const int RENDER_W = W/1, RENDER_H = H/1; 
+    const int MAX_DEPTH = 8; // max ray reflection count
+    const int MAX_DISTANCE = 10000; // render distance
+    const int SAMPLE_COUNT = 1; // sample per frame count
+    const float GAMMA = 1.0; // 2.2
 
     const float SPEED = 0.2f;
     const float SENSITIVITY = 1.2f;
 
     // CAMERA VARIABLES
-    sf::Vector3f pos(0.0, 0.0, 1.0); // camera position
-    sf::Vector2f angle(0.0, 0.0); // camera angle
-
+    sf::Vector3f pos(5.0, -33, 5); // camera position
+    sf::Vector2f angle(-1.57079632679, 0.0); // camera angle
 
     // CONTROLS
     bool controls[6] = { false, false, false, false, false, false };
 
-
     // OTHER VARIABLES
-    int frames;
-
+    int frames = 1;
 
     // RENDER OBJECTS
     sf::RenderWindow window(sf::VideoMode(W, H), "RayTracing!", sf::Style::Fullscreen);
-    window.setFramerateLimit(60);
-    window.setMouseCursorVisible(false);
+    sf::View view(sf::Vector2f(RENDER_W/2, RENDER_H/2), sf::Vector2f(RENDER_W, RENDER_H));
+    window.setView(view);
 
     sf::RenderTexture renderTexture;
-    renderTexture.create(W, H);
+    renderTexture.create(RENDER_W, RENDER_H);
     sf::Sprite renderTextureSprite = sf::Sprite(renderTexture.getTexture());
 
-    // OTHER SFML OBJECTS
+    // MOUSE
+    sf::Mouse::setPosition(sf::Vector2i(W / 2, H / 2), window);
+    window.setMouseCursorVisible(false);
+
+    // OTHER SFML
     sf::Clock clock;
 
     // LOAD SHADER
-    sf::FileInputStream shaderFile;
-    shaderFile.open("code/shader.frag");
+    sf::FileInputStream fragFile;
+    fragFile.open("code/frag.glsl");
     sf::Shader shader;
-    shader.loadFromStream(shaderFile, sf::Shader::Fragment);
+    shader.loadFromStream(fragFile, sf::Shader::Fragment);
 
     // RANDOM
     std::random_device rd;
@@ -50,10 +53,11 @@ int main()
 	std::uniform_real_distribution<> dist(0.0f, 1.0f);
 
     // SET UNIFORMS
-    shader.setUniform("RESOLUTION", sf::Vector2f(W, H));
+    shader.setUniform("RESOLUTION", sf::Vector2f(RENDER_W, RENDER_H));
     shader.setUniform("MAX_DEPTH", MAX_DEPTH);
     shader.setUniform("MAX_DISTANCE", MAX_DISTANCE);
     shader.setUniform("SAMPLE_COUNT", SAMPLE_COUNT);
+    shader.setUniform("GAMMA", GAMMA);
 
     while (window.isOpen())
     {
@@ -94,7 +98,6 @@ int main()
 			}
         }
 
-
         for (int i = 0; i < 6; i++)
         {
             if (controls[i])
@@ -103,7 +106,6 @@ int main()
                 break;
             }
         }
-
 
         // MOVE CAMERA
         sf::Vector3f dir(0.0, 0.0, 0.0);
@@ -122,6 +124,7 @@ int main()
         dir.x = dirTemp.x * cos(angle.x) - dirTemp.y * sin(angle.x);
         dir.y = dirTemp.x * sin(angle.x) + dirTemp.y * cos(angle.x);
         dir.z = dirTemp.z;
+
         pos += dir * SPEED;
 
         // SET UNIFORMS
@@ -131,9 +134,10 @@ int main()
         shader.setUniform("seed1", sf::Vector2f((float)dist(e2), (float)dist(e2)) * 999.0f);
 	    shader.setUniform("seed2", sf::Vector2f((float)dist(e2), (float)dist(e2)) * 999.0f);
 
-        shader.setUniform("sampleCount", frames);
+        shader.setUniform("staticFrames", frames);
         shader.setUniform("sample", renderTexture.getTexture());
 
+        shader.setUniform("time", clock.getElapsedTime().asSeconds());
 
         // DRAW
         window.clear();
